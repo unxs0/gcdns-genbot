@@ -1,0 +1,9 @@
+#!/bin/sh
+{{ range $host, $containers := groupByMulti $ "Env.VIRTUAL_HOST" "," }}
+#{{$host}}
+{{ range $container := $containers }}
+#{{$container.State}}
+{{ end }}
+{{ end }}
+
+echo 1 >> /tmp/gcdns.sh.log
