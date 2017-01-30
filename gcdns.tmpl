@@ -46,6 +46,7 @@ if [ $? != 0 ];then
 	rm -f transaction.yaml;
 else
 
+	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
 	if [ $? != 0 ];then
 		fLog "transaction add error";
@@ -65,6 +66,7 @@ if [ $? != 0 ];then
 	fLog "transaction start error";
 	rm -f transaction.yaml;
 else
+	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
 	if [ $? != 0 ];then
 		fLog "transaction remove error";

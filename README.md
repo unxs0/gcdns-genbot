@@ -40,9 +40,9 @@ Check last docker-gen changes (already exist errors are normal):
 
      docker exec ccb87c3fbc3c cat /tmp/gcdns.sh.log
      
-###Known issues
+### Known issues
 See github Issues
 
-###Manually Authenticate with More Options
+### Manually Authenticate with More Options
 
     docker exec ccb87c3fbc3c /google-cloud-sdk/bin/gcloud init
