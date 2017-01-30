@@ -22,12 +22,16 @@ Use `docker ps|grep gcdns-genbot` to get your container short tag (here we use c
 
 Check ENV, make sure cGCDNS vars are correct:
      docker exec ccb87c3fbc3c env
+     
 Check credentials, one must be ACTIVE:docker exec ccb87c3fbc3c /google-cloud-sdk/bin/gcloud dns record-sets list --zone=sistemasadhoc-com
      docker exec ccb87c3fbc3c /google-cloud-sdk/bin/gcloud auth list
+
 Check DNS environment, must show cGCDNSZone:
      docker execdocker exec /google-cloud-sdk/bin/gcloud dns managed-zones list
+
 Check your zone records using cGCDNSZOne (here we use sistemasadhoc-com as an example):
      docker exec ccb87c3fbc3c /google-cloud-sdk/bin/gcloud dns record-sets list --zone=sistemasadhoc-com
+
 Check last docker-gen changes (already exist errors are normal):
      docker exec ccb87c3fbc3c cat /tmp/gcdns.sh.log
      
