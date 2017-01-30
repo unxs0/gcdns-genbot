@@ -42,3 +42,7 @@ Check last docker-gen changes (already exist errors are normal):
      
 ###Known issues
 See github Issues
+
+###Manually Authenticate with More Options
+
+    docker exec ccb87c3fbc3c /google-cloud-sdk/bin/gcloud init
