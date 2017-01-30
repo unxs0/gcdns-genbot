@@ -1,9 +1,84 @@
 #!/bin/sh
-{{ range $host, $containers := groupByMulti $ "Env.VIRTUAL_HOST" "," }}
-#{{$host}}
-{{ range $container := $containers }}
-#{{$container.State}}
-{{ end }}
-{{ end }}
+fLog() { echo "`date +%b' '%d' '%T` $0[$$]: $@" >> /tmp/gcdns.sh.log; }
 
-echo 1 >> /tmp/gcdns.sh.log
+#clean log everytime
+cat /dev/null > /tmp/gcdns.sh.log;
+fLog "start";
+
+if [ -f /usr/bin/gcloudauth.sh ];then
+	fLog "attempting to auth one shot";
+	/usr/bin/gcloudauth.sh >> /tmp/gcdns.sh.log 2>&1;
+	if [ $? = 0 ];then
+		rm -f /usr/bin/gcloudauth.sh >> /tmp/gcdns.sh.log 2>&1;
+		if [ $? = 0 ];then
+			fLog "Ok auth one shot";
+		fi
+	else
+		fLog "error auth one shot";
+	fi
+fi
+	
+if [ "$cGCDNSZone" = "" ];then
+	fLog "cGCDNSZone ENV VAR must be set";
+	exit 1;
+fi
+
+cExternIP=`/usr/bin/curl -s ipinfo.io/ip 2>/dev/null`;
+if [ $? != 0 ];then
+	fLog "cExternIP curl error";
+	exit 2;
+fi
+if [ "$cExternIP" = "" ];then
+	fLog "cExternIP not set";
+	exit 3;
+fi
+
+#known issues of cExternIP has changed the remove will not work
+#	fix: get DATA then remove it.
+#add ore remove A records per host
+{{range $host, $containers := groupByMulti $ "Env.VIRTUAL_HOST" ","}}
+	{{range $container := $containers}}
+		{{ if $container.State.Running }}
+#create transaction
+/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+if [ $? != 0 ];then
+	fLog "transaction start error";
+	rm -f transaction.yaml;
+else
+
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+	if [ $? != 0 ];then
+		fLog "transaction add error";
+		rm -f transaction.yaml;
+	else
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+		if [ $? != 0 ];then
+			fLog "transaction execute error";
+			rm -f transaction.yaml;
+		fi
+	fi
+fi
+		{{else}}
+#create transaction
+/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+if [ $? != 0 ];then
+	fLog "transaction start error";
+	rm -f transaction.yaml;
+else
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+	if [ $? != 0 ];then
+		fLog "transaction remove error";
+		rm -f transaction.yaml;
+	else
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+		if [ $? != 0 ];then
+			fLog "transaction execute error";
+			rm -f transaction.yaml;
+		fi
+	fi
+fi
+		{{end}}
+	{{end}}
+{{end}}
+
+fLog "end";

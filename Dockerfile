@@ -6,6 +6,7 @@ RUN apt-get update \
  && apt-get install -y -q --no-install-recommends \
     wget \
     supervisor \
+    curl \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/*
 
@@ -35,4 +36,4 @@ CMD ["/usr/bin/supervisord","-n"]
 #
 # install gc-credentials.json in /var/local/dockprox on host
 #
-# docker run --restart unless-stopped --name gcdns-genbot --env cGCDNSProject=adhoc-dev -v /var/run/docker.sock:/var/run/docker.sock:ro -v /var/local/dockprox:/var/local/dockprox -d unxsio/gcdns-genbot
+# docker run --restart unless-stopped --name gcdns-genbot --env cGCDNSProject=adhoc-dev --env cGCDNSZone=sistemasadhoc-com -v /var/run/docker.sock:/var/run/docker.sock:ro -v /var/local/dockprox:/var/local/dockprox -d unxsio/gcdns-genbot
