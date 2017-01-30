@@ -1,5 +1,5 @@
 # gcdns-genbot
-Docker container that uses docker-gen and Google Cloud DNS via gcloud to manage DNS records
+Docker container that uses docker-gen and Google Cloud DNS via gcloud to automatically manage (add/remove) DNS records based on Docker container info of container host.
 
 ### Status
 Ready for alpha testing.
