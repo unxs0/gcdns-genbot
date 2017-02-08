@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 fLog() { echo "`date +%b' '%d' '%T` $0[$$]: $@" >> /tmp/gcdns.sh.log; }
 
 #clean log everytime
@@ -22,6 +22,8 @@ if [ "$cGCDNSZone" = "" ];then
 	fLog "cGCDNSZone ENV VAR must be set";
 	exit 1;
 fi
+# replace all blanks
+cGCDNSZoneStops=${cGCDNSZone//-/.};
 
 cExternIP=`/usr/bin/curl -s ipinfo.io/ip 2>/dev/null`;
 if [ $? != 0 ];then
@@ -46,8 +48,13 @@ if [ $? != 0 ];then
 	rm -f transaction.yaml;
 else
 
+			{{ if eq $host "{io.rancher.stack.name}"}}
+	fLog "transaction start for {{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{else}}
 	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{end}}
 	if [ $? != 0 ];then
 		fLog "transaction add error";
 		rm -f transaction.yaml;
@@ -66,8 +73,13 @@ if [ $? != 0 ];then
 	fLog "transaction start error";
 	rm -f transaction.yaml;
 else
+			{{ if eq $host "{io.rancher.stack.name}"}}
+	fLog "transaction start for {{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{else}}
 	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{end}}
 	if [ $? != 0 ];then
 		fLog "transaction remove error";
 		rm -f transaction.yaml;
