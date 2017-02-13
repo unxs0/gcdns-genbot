@@ -7,6 +7,7 @@ RUN apt-get update \
     wget \
     supervisor \
     curl \
+    dnsutils \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/*
 
