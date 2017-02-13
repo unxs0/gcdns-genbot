@@ -51,9 +51,13 @@ else
 			{{ if eq $host "{io.rancher.stack.name}"}}
 	fLog "transaction start for {{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{else}}{{ if eq $host "copy.{io.rancher.stack.name}"}}
+	fLog "transaction start for copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
 			{{else}}
 	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{end}}
 			{{end}}
 	if [ $? != 0 ];then
 		fLog "transaction add error";
@@ -76,9 +80,13 @@ else
 			{{ if eq $host "{io.rancher.stack.name}"}}
 	fLog "transaction start for {{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{else}}{{ if eq $host "copy.{io.rancher.stack.name}"}}
+	fLog "transaction start for copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops" --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
 			{{else}}
 	fLog "transaction start for {{$host}}";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name='{{$host}}.' --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			{{end}}
 			{{end}}
 	if [ $? != 0 ];then
 		fLog "transaction remove error";
