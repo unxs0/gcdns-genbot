@@ -73,8 +73,19 @@ else
 			rm -f transaction.yaml;
 		fi
 	else
-		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+		cReturn=`/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone 2>&1`;
 		if [ $? != 0 ];then
+			case "$cReturn" in
+				*already*exists)
+					fLog "already there not adding";
+					rm -f transaction.yaml;
+					exit;
+					;;
+				*)
+					fLog "unhandled error case:";
+					fLog "$cReturn";
+					;;
+			esac
 			fLog "transaction execute error trying whole thing again in 60s...";
 			sleep 60;
 			rm -f transaction.yaml;
@@ -125,8 +136,20 @@ else
 			rm -f transaction.yaml;
 		fi
 	else
-		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+		cReturn=`/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone 2>&1`;
 		if [ $? != 0 ];then
+			case "$cReturn" in
+				*already*exists)
+					fLog "already there not adding";
+					rm -f transaction.yaml;
+					exit;
+					;;
+				*)
+					fLog "unhandled error case:";
+					fLog "$cReturn";
+					;;
+			esac
+			echo $cReturn;
 			fLog "transaction execute error trying whole thing again in 60s...";
 			sleep 60;
 			rm -f transaction.yaml;
