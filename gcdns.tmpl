@@ -84,7 +84,7 @@ else
 			{{end}}
 			{{end}}
 	cRemoveIP=`/usr/bin/dig +short $cName A`;	
-	if [ $? != 0 ];then
+	if [ $? != 0 ] || [ "$cRemoveIP" == "" ];then
 		fLog "No A record for $cName. Aborting!";
 		rm -f transaction.yaml;
 		exit;
