@@ -65,13 +65,23 @@ else
 	fLog "add transaction start for $cName $cExternIP";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
 	if [ $? != 0 ];then
-		fLog "transaction add error";
-		rm -f transaction.yaml;
+		fLog "transaction add error trying again in 60s...";
+		sleep 60;
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+		if [ $? != 0 ];then
+			fLog "transaction add error";
+			rm -f transaction.yaml;
+		fi
 	else
 		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 		if [ $? != 0 ];then
-			fLog "transaction execute error";
-			rm -f transaction.yaml;
+			fLog "transaction execute error trying again in 60s...";
+			sleep 60;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			if [ $? != 0 ];then
+				fLog "transaction execute error";
+				rm -f transaction.yaml;
+			fi
 		fi
 	fi
 fi
@@ -114,8 +124,13 @@ else
 	else
 		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 		if [ $? != 0 ];then
-			fLog "transaction execute error";
-			rm -f transaction.yaml;
+			fLog "transaction execute error trying again in 60s...";
+			sleep 60;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			if [ $? != 0 ];then
+				fLog "transaction execute error";
+				rm -f transaction.yaml;
+			fi
 		fi
 	fi
 fi
