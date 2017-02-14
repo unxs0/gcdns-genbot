@@ -85,15 +85,20 @@ else
 			{{end}}
 	cRemoveIP=`/usr/bin/dig +short $cName A`;	
 	if [ $? != 0 ];then
-		#try this anyway should never be the case
-		fLog "dig error, using cExternIP";
-		cRemoveIP=$cExternIP;
+		fLog "No A record for $cName. Aborting!";
+		rm -f transaction.yaml;
+		exit;
 	fi
 	fLog "remove transaction start for $cName $cRemoveIP";
 	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
 	if [ $? != 0 ];then
-		fLog "transaction remove error";
-		rm -f transaction.yaml;
+		fLog "transaction remove error trying again in 60s";
+		sleep 60;
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
+		if [ $? != 0 ];then
+			fLog "transaction remove error final";
+			rm -f transaction.yaml;
+		fi
 	else
 		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 		if [ $? != 0 ];then
