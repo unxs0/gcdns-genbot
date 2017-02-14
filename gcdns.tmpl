@@ -17,6 +17,13 @@ if [ -f /usr/bin/gcloudauth.sh ];then
 		fLog "error auth one shot";
 	fi
 fi
+
+
+#We will turn this into an ENV VAR soont
+if [ "$cGCDNSNSIP" = "" ];then
+	cGCDNSNSIP="8.8.8.8";
+	#fLog "cGCDNSNSIP ENV VAR must be set";
+fi
 	
 if [ "$cGCDNSZone" = "" ];then
 	fLog "cGCDNSZone ENV VAR must be set";
@@ -83,7 +90,7 @@ else
 	cName="{{$host}}";
 			{{end}}
 			{{end}}
-	cRemoveIP=`/usr/bin/dig +short $cName A`;	
+	cRemoveIP=`/usr/bin/dig @$cGCDNSNSIP +short $cName A`;	
 	if [ $? != 0 ] || [ "$cRemoveIP" == "" ];then
 		fLog "No A record for $cName. Aborting!";
 		rm -f transaction.yaml;
