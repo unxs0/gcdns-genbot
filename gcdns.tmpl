@@ -55,8 +55,8 @@ if [ $? != 0 ];then
 else
 			{{ if eq $host "{io.rancher.stack.name}"}}
 	cName="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
-			{{else}}{{ if eq $host "copy.{io.rancher.stack.name}"}}
-	cName="copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+			{{else}}{{ if eq $host "backup.{io.rancher.stack.name}"}}
+	cName="backup.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 			{{else}}
 	cName="{{$host}}";
 			{{end}}
@@ -107,8 +107,8 @@ if [ $? != 0 ];then
 else
 			{{ if eq $host "{io.rancher.stack.name}"}}
 	cName="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
-			{{else}}{{ if eq $host "copy.{io.rancher.stack.name}"}}
-	cName="copy.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+			{{else}}{{ if eq $host "backup.{io.rancher.stack.name}"}}
+	cName="backup.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 			{{else}}
 	cName="{{$host}}";
 			{{end}}
