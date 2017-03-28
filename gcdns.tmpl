@@ -1,4 +1,25 @@
 #!/bin/bash
+#
+# FILE
+#	gcdns-genbot/scripts/gcdns.sh
+# NOTES
+# Status=(created|restarting|running|removing|paused|exited|dead)
+#
+# - "State": {
+#     "Error": "",
+#     "ExitCode": 9,
+#     "FinishedAt": "2015-01-06T15:47:32.080254511Z",
+#     "OOMKilled": false,
+#     "Dead": false,
+#     "Paused": false,
+#     "Pid": 0,
+#     "Restarting": false,
+#     "Running": true,
+#     "StartedAt": "2015-01-06T15:47:32.072697474Z",
+#     "Status": "running"
+# }
+#
+
 fLog() { echo "`date +%b' '%d' '%T` $0[$$]: $@" >> /tmp/gcdns.sh.log; }
 
 #clean log everytime
@@ -105,6 +126,7 @@ else
 	fi
 fi
 		{{else}}
+		    {{ if $container.State.Status == "removing" || $container.State.Status == "exited" }}
 #create remove transaction
 /google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 if [ $? != 0 ];then
@@ -178,6 +200,7 @@ if [ "$cNoRecordAbort" != "yes" ];then
 fi
 fi
 		{{end}}
+	    {{end}}
 	{{end}}
 {{end}}
 
