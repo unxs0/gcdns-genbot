@@ -126,7 +126,7 @@ else
 	fi
 fi
 		{{else}}
-		    {{ if $container.State.Status == "removing" || $container.State.Status == "exited" }}
+		    {{ if eq $container.State.Status "removing" || if eq $container.State.Status "exited" }}
 #create remove transaction
 /google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 if [ $? != 0 ];then
