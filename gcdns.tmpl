@@ -3,8 +3,7 @@
 # FILE
 #	gcdns-genbot/scripts/gcdns.sh
 # NOTES
-#	docker-gen schema does not mirror Docker :(!
-#
+#	Trying new idea. Never remove only update via remove then add.
 
 fLog() { echo "`date +%b' '%d' '%T` $0[$$]: $@" >> /tmp/gcdns.sh.log; }
 
@@ -55,134 +54,122 @@ fi
 	{{range $container := $containers}}
 		{{ if $container.State.Running }}
 #create transaction
+fLog "create transaction start for $cGCDNSZone";
 /google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
-if [ $? != 0 ];then
-	fLog "transaction start error";
-	rm -f transaction.yaml;
-else
+
+#get cName
 			{{ if eq $host "{io.rancher.stack.name}"}}
-	cName="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+cName="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 			{{else}}{{ if eq $host "backup.{io.rancher.stack.name}"}}
-	cName="backup.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
+cName="backup.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
 			{{else}}
-	cName="{{$host}}";
+cName="{{$host}}";
 			{{end}}
 			{{end}}
 
-	fLog "add transaction start for $cName $cExternIP";
-	/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." \
+fLog "add transaction start for $cName $cExternIP";
+/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." \
 			--type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
-	if [ $? != 0 ];then
-		fLog "transaction add error trying again in 60s...";
+fLog "transaction execute for $cName $cExternIP";
+cReturn=`/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone 2>&1`;
+if [ $? != 0 ];then
+	case "$cReturn" in
+		*already*exists)
+			fLog "already exists";
+			cAlreadyExists="yes";
+			;;
+		*)
+			fLog "unhandled error case:";
+			fLog "$cReturn";
+			;;
+	esac
+	if [ "$cAlreadyExists" != "yes" ];then
+		fLog "transaction execute error trying whole thing again in 60s...";
 		sleep 60;
+		rm -f transaction.yaml;
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 		/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." \
-			--type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+				--type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+		/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 		if [ $? != 0 ];then
-			fLog "transaction add error";
+			fLog "transaction add execute error final";
 			rm -f transaction.yaml;
+		else
+			fLog "ok add2 for $cName $cExternIP";
 		fi
 	else
-		cReturn=`/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone 2>&1`;
-		if [ $? != 0 ];then
-			case "$cReturn" in
-				*already*exists)
-					fLog "already there not adding";
-					rm -f transaction.yaml;
-					cAlreadyExists="yes";
-					;;
-				*)
-					fLog "unhandled error case:";
-					fLog "$cReturn";
-					;;
-			esac
-			if [ "$cAlreadyExists" != "yes" ];then
-				fLog "transaction execute error trying whole thing again in 60s...";
-				sleep 60;
-				rm -f transaction.yaml;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction add --zone=$cGCDNSZone --name="$cName." \
-						--type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
-				if [ $? != 0 ];then
-					fLog "transaction execute error";
-					rm -f transaction.yaml;
-				fi
-			fi
-		fi
-	fi
-fi
-		{{else}}
-#create remove transaction
-/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
-if [ $? != 0 ];then
-	fLog "transaction start error";
-	rm -f transaction.yaml;
-else
-			{{ if eq $host "{io.rancher.stack.name}"}}
-	cName="{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
-			{{else}}{{ if eq $host "backup.{io.rancher.stack.name}"}}
-	cName="backup.{{index $container.Labels "io.rancher.stack.name"}}.$cGCDNSZoneStops";
-			{{else}}
-	cName="{{$host}}";
-			{{end}}
-			{{end}}
-	cRemoveIP=`/usr/bin/dig @$cGCDNSNSIP +short $cName A`;	
-	if [ $? != 0 ] || [ "$cRemoveIP" == "" ];then
-		fLog "No A record for $cName. Trying again in 60s...";
-		sleep 60;
-		cRemoveIP=`/usr/bin/dig @$cGCDNSNSIP +short $cName A`;	
+		fLog "Removing";
+		cRemoveIP="";
+		cRemoveIP=`/usr/bin/dig @$cGCDNSNSIP +short $cName A`;  
 		if [ $? != 0 ] || [ "$cRemoveIP" == "" ];then
-			fLog "No A record for $cName. Aborting!";
-			rm -f transaction.yaml;
-			cNoRecordAbort="yes";
+			fLog "No A record for $cName. Trying again in 60s...";
+			sleep 60;
+			cRemoveIP=`/usr/bin/dig @$cGCDNSNSIP +short $cName A`;  
+			if [ $? != 0 ] || [ "$cRemoveIP" == "" ];then
+				fLog "No A record for $cName. Aborting!";
+				cNoRecordAbort="yes";
+			fi
+		else
+			fLog "Ok cRemoveIP:$cRemoveIP";
 		fi
-	fi
 
-if [ "$cNoRecordAbort" != "yes" ];then
-
-	fLog "remove transaction start for $cName $cRemoveIP";
-	/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="$cName." \
-			 --type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
-	if [ $? != 0 ];then
-		fLog "transaction remove error trying again in 60s";
-		sleep 60;
-		/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="$cName." \
-			 --type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
-		if [ $? != 0 ];then
-			fLog "transaction remove error final";
+		if [ "$cNoRecordAbort" != "yes" ];then
 			rm -f transaction.yaml;
-		fi
-	else
-		cReturn=`/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone 2>&1`;
-		if [ $? != 0 ];then
-			case "$cReturn" in
-				*already*exists)
-					fLog "already there not adding";
+			fLog "remove transaction start for $cName $cRemoveIP";
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction start \
+				--zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction remove \
+				 --zone=$cGCDNSZone --name="$cName." \
+				--type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction execute \
+				--zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			if [ $? != 0 ];then
+				fLog "transaction remove error trying again in 60s";
+				sleep 60;
+				/google-cloud-sdk/bin/gcloud dns record-sets transaction remove \
+					 --zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 \
+					$cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
+				if [ $? != 0 ];then
+					fLog "transaction remove error final";
 					rm -f transaction.yaml;
-					cAlreadyExists="yes";
-					;;
-				*)
-					fLog "unhandled error case:";
-					fLog "$cReturn";
-					;;
-			esac
-			if [ "$cAlreadyExists" != "yes" ];then
-				echo $cReturn;
-				fLog "transaction execute error trying whole thing again in 60s...";
+				else
+					fLog "Ok remove2";
+				fi
+			else
+				fLog "Ok remove1";
+			fi
+
+			fLog "Adding";
+			rm -f transaction.yaml;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction start \
+				 --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction add \
+				--zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+			/google-cloud-sdk/bin/gcloud dns record-sets transaction execute \
+				--zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+			if [ $? != 0 ];then
+				fLog "transaction execute error adding after remove";
 				sleep 60;
 				rm -f transaction.yaml;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction start --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction remove --zone=$cGCDNSZone --name="$cName." \
-						--type=A --ttl=300 $cRemoveIP >> /tmp/gcdns.sh.log 2>&1;
-				/google-cloud-sdk/bin/gcloud dns record-sets transaction execute --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+				/google-cloud-sdk/bin/gcloud dns record-sets transaction start \
+				 --zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
+				/google-cloud-sdk/bin/gcloud dns record-sets transaction add \
+				--zone=$cGCDNSZone --name="$cName." --type=A --ttl=300 $cExternIP >> /tmp/gcdns.sh.log 2>&1;
+				/google-cloud-sdk/bin/gcloud dns record-sets transaction execute \
+				--zone=$cGCDNSZone >> /tmp/gcdns.sh.log 2>&1;
 				if [ $? != 0 ];then
-					fLog "transaction execute error";
+					fLog "transaction execute error add after remove final";
 					rm -f transaction.yaml;
-				fi
+				else
+					fLog "Ok add2 after remove";
+				fi	
+			else
+				fLog "Ok add1 after remove";
 			fi
 		fi
 	fi
-fi
+else
+	fLog "ok simple add for $cName $cExternIP";
 fi
 		{{end}}
 	{{end}}
